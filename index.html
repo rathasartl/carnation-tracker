@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Carnation Tracker — Paste to Excel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root {
+    --carnation-red: #C8102E;
+    --carnation-red-dark: #A50C24;
+    --carnation-cream: #FFF8E7;
+    --bg- giveaway: #FFF4DC;
+    --bg-sales: #E3F2FD;
+    --bg-zero: #F5F5F5;
+    --text-dark: #1A1A1A;
+    --text-muted: #6B6B6B;
+    --border: #E5E5E5;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 12px 32px rgba(200,16,46,0.18), 0 4px 8px rgba(0,0,0,0.06);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, "SF Pro Text", "Helvetica Neue", "Tahoma", sans-serif;
+    background: linear-gradient(135deg, #FAFAFA 0%, #FFF8E7 100%);
+    color: var(--text-dark);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+    line-height: 1.5;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    background: linear-gradient(135deg, var(--carnation-red) 0%, var(--carnation-red-dark) 100%);
+    color: white;
+    padding: 28px 32px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .header::before {
+    content: "";
+    position: absolute;
+    right: -40px;
+    top: -40px;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+  }
+
+  .header .subtitle {
+    font-size: 14px;
+    opacity: 0.92;
+    font-weight: 400;
+  }
+
+  .header .brand {
+    display: inline-block;
+    background: rgba(255,255,255,0.18);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    backdrop-filter: blur(10px);
+  }
+
+  /* ===== Steps ===== */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .step {
+    background: white;
+    border-radius: 12px;
+    padding: 16px 20px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-left: 4px solid var(--carnation-red);
+    transition: all 0.2s;
+  }
+
+  .step.active {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-left-color: var(--carnation-red);
+  }
+
+  .step .num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--carnation-red);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+
+  .step .label {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .step .label strong {
+    display: block;
+    color: var(--text-dark);
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  /* ===== Main ===== */
+  .panel {
+    background: white;
+    border-radius: 16px;
+    padding: 24px 28px;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 20px;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .panel-title::before {
+    content: "";
+    width: 4px;
+    height: 18px;
+    background: var(--carnation-red);
+    border-radius: 2px;
+  }
+
+  .panel-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 240px;
+    padding: 16px 18px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    resize: vertical;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #FAFAFA;
+  }
+
+  textarea:focus {
+    outline: none;
+    border-color: var(--carnation-red);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(200,16,46,0.08);
+  }
+
+  textarea::placeholder {
+    color: #B0B0B0;
+  }
+
+  /* ===== Buttons ===== */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--carnation-red) 0%, var(--carnation-red-dark) 100%);
+    color: white;
+    box-shadow: 0 2px 6px rgba(200,16,46,0.3);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(200,16,46,0.4);
+  }
+
+  .btn-primary:disabled {
+    background: #DDD;
+    color: #999;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: white;
+    color: var(--text-dark);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover {
+    background: #FAFAFA;
+    border-color: var(--carnation-red);
+    color: var(--carnation-red);
+  }
+
+  .btn-large {
+    padding: 14px 28px;
+    font-size: 15px;
+  }
+
+  /* ===== Stats ===== */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: white;
+    padding: 18px 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    border-top: 3px solid var(--carnation-red);
+  }
+
+  .stat-card .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-card .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== Preview Table ===== */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: white;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead {
+    background: var(--carnation-red);
+    color: white;
+  }
+
+  th {
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid var(--carnation-red-dark);
+  }
+
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  tbody tr:hover { background: #FFFCE5; }
+
+  tr.row-giveaway { background: rgba(255, 244, 220, 0.5); }
+  tr.row-sales { background: rgba(227, 242, 253, 0.5); }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .badge-giveaway {
+    background: var(--carnation-red);
+    color: white;
+  }
+
+  .badge-sales {
+    background: #1976D2;
+    color: white;
+  }
+
+  .num-zero { color: #BDBDBD; }
+  .num-positive { color: var(--carnation-red-dark); font-weight: 600; }
+
+  /* ===== Empty State ===== */
+  .empty {
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .empty .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.4; }
+
+  /* ===== Alert ===== */
+  .alert {
+    background: #FFF3CD;
+    border: 1px solid #FFE69C;
+    color: #664D03;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .alert-error {
+    background: #FDE7E9;
+    border-color: #F8B4BA;
+    color: #8A1A1A;
+  }
+
+  .alert-success {
+    background: #D4EDDA;
+    border-color: #AEDCB7;
+    color: #155724;
+  }
+
+  /* ===== Footer ===== */
+  .footer {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-top: 32px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .steps { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .header h1 { font-size: 22px; }
+    .panel { padding: 18px 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ===== HEADER ===== -->
+  <div class="header">
+    <div class="brand">Carnation · Stock & Sales</div>
+    <h1>📊 ตัวแปลงข้อความ → Excel</h1>
+    <div class="subtitle">ก๊อปจาก LINE → วาง → ดาวน์โหลดไฟล์ Excel สวยทันที</div>
+  </div>
+
+  <!-- ===== STEPS ===== -->
+  <div class="steps">
+    <div class="step active" id="step1">
+      <div class="num">1</div>
+      <div class="label"><strong>วางข้อความ</strong>ก๊อปจากไลน์มาวาง</div>
+    </div>
+    <div class="step" id="step2">
+      <div class="num">2</div>
+      <div class="label"><strong>แปลงข้อมูล</strong>ระบบแยกให้เป็นตาราง</div>
+    </div>
+    <div class="step" id="step3">
+      <div class="num">3</div>
+      <div class="label"><strong>ดาวน์โหลด Excel</strong>สวย มีสี พร้อมใช้</div>
+    </div>
+  </div>
+
+  <!-- ===== INPUT ===== -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">ข้อความจาก LINE</div>
+      <div class="panel-actions">
+        <button class="btn btn-secondary" onclick="loadSample()">ลองตัวอย่าง</button>
+        <button class="btn btn-secondary" onclick="clearAll()">ล้าง</button>
+      </div>
+    </div>
+    <textarea id="input" placeholder="วางข้อความตรงนี้...
+
+ตัวอย่างฟอร์แมต:
+รายการของแจก วันที่ 31/07/69
+
+1. นมข้นจืดคาร์เนชัน (กระป๋องใหญ่)
+    จำนวน 50 กระป๋อง
+    แจกได้ : 0 กระป๋อง
+
+สรุปยอดขาย วันที่ 31/07/69
+
+1. นมข้นจืดคาร์เนชัน (กระป๋องใหญ่)
+    จำนวน 44 กระป๋อง
+    ขายได้ : 0 กระป๋อง"></textarea>
+    <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 10px;">
+      <button class="btn btn-primary btn-large" id="convertBtn" onclick="convert()">
+        ✨ แปลงเป็น Excel
+      </button>
+    </div>
+    <div id="alertBox" style="margin-top: 12px;"></div>
+  </div>
+
+  <!-- ===== STATS ===== -->
+  <div id="statsBox" style="display: none;">
+    <div class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="statTotal">0</div>
+        <div class="stat-label">รายการทั้งหมด</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statGiveaway" style="color: var(--carnation-red);">0</div>
+        <div class="stat-label">รายการแจก</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statSales" style="color: #1976D2;">0</div>
+        <div class="stat-label">รายการขาย</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statDays">0</div>
+        <div class="stat-label">วันที่ครอบคลุม</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PREVIEW ===== -->
+  <div id="previewPanel" class="panel" style="display: none;">
+    <div class="panel-header">
+      <div class="panel-title">ตัวอย่างข้อมูลที่แปลงแล้ว</div>
+      <div class="panel-actions">
+        <button class="btn btn-primary btn-large" onclick="downloadExcel()">
+          ⬇️ ดาวน์โหลด Excel
+        </button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table id="previewTable"></table>
+    </div>
+    <div style="margin-top: 14px; text-align: right;">
+      <button class="btn btn-primary btn-large" onclick="downloadExcel()">
+        ⬇️ ดาวน์โหลดไฟล์ Excel
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== FOOTER ===== -->
+  <div class="footer">
+    Carnation Tracker · ทำงานออฟไลน์ในเบราว์เซอร์ · ข้อมูลไม่ออกจากเครื่อง
+  </div>
+</div>
+
+<script>
+// ============================================================
+// PARSER — รับข้อความแบบ LINE → แยกเป็น records
+// ============================================================
+
+function parseDate(str) {
+  const m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (!m) return str.trim();
+  let [, d, mo, y] = m;
+  d = d.padStart(2, '0');
+  mo = mo.padStart(2, '0');
+  if (y.length === 2) y = '25' + y;
+  else if (y.length === 4 && parseInt(y) < 2400) y = String(parseInt(y) + 543);
+  return `${d}/${mo}/${y}`;
+}
+
+function extractNote(text) {
+  // (ส่งให้คุณลีน่าจัง) หรือ (27 บาท/หลอด) ฯลฯ
+  const m = text.match(/[（(]\s*([^)）]+?)\s*[)）]/);
+  return m ? m[1].trim() : '';
+}
+
+function stripParentheses(text) {
+  return text.replace(/[（(][^)）]*[)）]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function parseInput(text) {
+  const lines = text.split('\n').map(l => l.trim());
+  const records = [];
+  let currentDate = null;
+  let currentType = null;
+  let pending = null;
+
+  const flush = (qty, note) => {
+    if (pending && currentDate && currentType) {
+      records.push({
+        date: currentDate,
+        type: currentType,
+        name: pending.name,
+        stock: pending.stock,
+        unit: pending.unit,
+        qty: qty || 0,
+        note: note || ''
+      });
+    }
+    pending = null;
+  };
+
+  for (const line of lines) {
+    if (!line) continue;
+
+    // Section header: "รายการของแจก วันที่ 31/07/69" หรือ "สรุปยอดขาย วันที่ 02/08/69"
+    let m = line.match(/(รายการของแจก|สรุปยอดขาย|ยอดขาย|รายการแจก|ขาย|แจก)[^ว]*?วันที่\s*([\d\/]+)/i);
+    if (m && /วันที่/i.test(line)) {
+      flush(0, '');
+      currentType = /ขาย/i.test(line) ? 'ขาย' : 'แจก';
+      currentDate = parseDate(m[2]);
+      continue;
+    }
+
+    // Item: "1. นมข้นจืดคาร์เนชัน (กระป๋องใหญ่)"
+    m = line.match(/^\d+\.\s+(.+)$/);
+    if (m && currentDate) {
+      flush(0, '');
+      pending = { name: m[1].trim(), stock: null, unit: '' };
+      continue;
+    }
+
+    // Stock: "จำนวน 50 กระป๋อง"
+    m = line.match(/จำนวน\s+(\d+)/);
+    if (m && pending) {
+      pending.stock = parseInt(m[1]);
+      const unitM = line.match(/จำนวน\s+\d+\s+([^\d(\n]+)/);
+      if (unitM) pending.unit = unitM[1].trim();
+      // Capture extra stock info
+      const extraM = line.match(/\+\s*(\d+)\s*([^)\n]+)/);
+      if (extraM) {
+        pending.note_extra = `+ ${extraM[1]} ${extraM[2].trim()}`;
+      }
+      continue;
+    }
+
+    // Action: "แจกได้ : 7 กระป๋อง" หรือ "ขายได้ : 0 กระป๋อง"
+    m = line.match(/(แจกได้|ขายได้)\s*[:：]\s*(\d+)/);
+    if (m && pending) {
+      const qty = parseInt(m[2]);
+      let note = extractNote(line);
+      if (!note && pending.note_extra) note = pending.note_extra;
+      flush(qty, note);
+      continue;
+    }
+  }
+  flush(0, '');
+
+  return records;
+}
+
+// ============================================================
+// STATS + PREVIEW
+// ============================================================
+
+let CURRENT_RECORDS = [];
+
+function showAlert(msg, type = '') {
+  const box = document.getElementById('alertBox');
+  box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  if (!msg) box.innerHTML = '';
+}
+
+function convert() {
+  const text = document.getElementById('input').value;
+  if (!text.trim()) {
+    showAlert('⚠️ วางข้อความก่อนกดแปลง', 'error');
+    return;
+  }
+
+  const records = parseInput(text);
+  if (records.length === 0) {
+    showAlert('❌ ไม่พบรายการที่จับคู่ได้ — ลองตรวจสอบฟอร์แมต หรือกดปุ่ม "ลองตัวอย่าง"', 'error');
+    return;
+  }
+
+  CURRENT_RECORDS = records;
+  showAlert(`✅ แปลงสำเร็จ — ${records.length} รายการ`, 'success');
+  renderStats(records);
+  renderPreview(records);
+
+  // Update steps
+  document.getElementById('step2').classList.add('active');
+  document.getElementById('step3').classList.add('active');
+
+  // Scroll to preview
+  setTimeout(() => {
+    document.getElementById('previewPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 200);
+}
+
+function renderStats(records) {
+  document.getElementById('statsBox').style.display = 'block';
+  const dates = [...new Set(records.map(r => r.date))];
+  const giveaways = records.filter(r => r.type === 'แจก').length;
+  const sales = records.filter(r => r.type === 'ขาย').length;
+  document.getElementById('statTotal').textContent = records.length;
+  document.getElementById('statGiveaway').textContent = giveaways;
+  document.getElementById('statSales').textContent = sales;
+  document.getElementById('statDays').textContent = dates.length;
+}
+
+function renderPreview(records) {
+  const panel = document.getElementById('previewPanel');
+  panel.style.display = 'block';
+
+  let html = `
+    <thead>
+      <tr>
+        <th>วันที่</th>
+        <th>ประเภท</th>
+        <th>สินค้า</th>
+        <th style="text-align:right;">สต็อก</th>
+        <th style="text-align:right;">จำนวน</th>
+        <th>หน่วย</th>
+        <th>หมายเหตุ</th>
+      </tr>
+    </thead>
+    <tbody>
+  `;
+
+  for (const r of records) {
+    const cls = r.type === 'แจก' ? 'row-giveaway' : 'row-sales';
+    const badge = r.type === 'แจก'
+      ? '<span class="badge badge-giveaway">แจก</span>'
+      : '<span class="badge badge-sales">ขาย</span>';
+    const qtyClass = r.qty > 0 ? 'num-positive' : 'num-zero';
+    html += `
+      <tr class="${cls}">
+        <td>${r.date}</td>
+        <td>${badge}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td style="text-align:right;">${r.stock ?? '-'}</td>
+        <td style="text-align:right;" class="${qtyClass}">${r.qty}</td>
+        <td>${escapeHtml(r.unit)}</td>
+        <td>${escapeHtml(r.note)}</td>
+      </tr>
+    `;
+  }
+  html += '</tbody>';
+  document.getElementById('previewTable').innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// ============================================================
+// EXCEL EXPORT — ใช้ ExcelJS สร้างไฟล์สวย
+// ============================================================
+
+async function downloadExcel() {
+  if (CURRENT_RECORDS.length === 0) {
+    showAlert('⚠️ กด "แปลงเป็น Excel" ก่อน', 'error');
+    return;
+  }
+
+  if (typeof ExcelJS === 'undefined') {
+    showAlert('❌ โหลด ExcelJS ไม่สำเร็จ — ต้องเชื่อมเน็ตครั้งแรก, ลอง refresh หน้านี้', 'error');
+    return;
+  }
+
+  const btn = event?.target?.closest('button');
+  const originalText = btn?.innerHTML;
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳ กำลังสร้าง...';
+  }
+  showAlert('⏳ กำลังสร้างไฟล์ Excel...', '');
+
+  try {
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Carnation Tracker';
+    wb.created = new Date();
+
+    // === Colors ===
+    const COLOR = {
+      red: 'C8102E',
+      redDark: 'A50C24',
+      cream: 'FFF8E7',
+      giveawayBg: 'FFF4DC',
+      salesBg: 'E3F2FD',
+      headerFg: 'FFFFFF',
+      zero: 'BDBDBD',
+      border: 'D0D0D0',
+      totalBg: 'FFE0B2',
+      altRow: 'FAFAFA'
+    };
+
+    // === Sheet 1: ข้อมูล ===
+    const ws = wb.addWorksheet('ข้อมูล', {
+      views: [{ state: 'frozen', ySplit: 2 }],
+      properties: { defaultRowHeight: 20 }
+    });
+
+    ws.columns = [
+      { width: 13 }, { width: 9 }, { width: 48 }, { width: 12 },
+      { width: 10 }, { width: 9 }, { width: 36 }
+    ];
+
+    // Title row
+    ws.mergeCells('A1:G1');
+    const title = ws.getCell('A1');
+    title.value = 'รายงานการแจกและยอดขาย — Carnation';
+    title.font = { name: 'Tahoma', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.red } };
+    title.alignment = { horizontal: 'center', vertical: 'middle' };
+    ws.getRow(1).height = 32;
+
+    // Headers
+    const headers = ['วันที่', 'ประเภท', 'ชื่อสินค้า', 'จำนวนสต็อก', 'จำนวน', 'หน่วย', 'หมายเหตุ'];
+    headers.forEach((h, i) => {
+      const c = ws.getCell(2, i + 1);
+      c.value = h;
+      c.font = { name: 'Tahoma', size: 11, bold: true, color: { argb: COLOR.headerFg } };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.red } };
+      c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+      c.border = thinBorder(COLOR.redDark);
+    });
+    ws.getRow(2).height = 28;
+
+    // Sort: by date, then แจก before ขาย
+    const sorted = [...CURRENT_RECORDS].sort((a, b) => {
+      return a.date.localeCompare(b.date) || (a.type === 'แจก' ? -1 : 1);
+    });
+
+    let row = 3;
+    for (const r of sorted) {
+      const bg = r.type === 'แจก' ? COLOR.giveawayBg : COLOR.salesBg;
+      const values = [r.date, r.type, r.name, r.stock ?? '', r.qty, r.unit, r.note];
+      values.forEach((v, i) => {
+        const c = ws.getCell(row, i + 1);
+        c.value = v;
+        c.font = {
+          name: 'Tahoma',
+          size: 10,
+          color: { argb: i === 4 && r.qty === 0 ? COLOR.zero : 'FF000000' }
+        };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+        c.alignment = {
+          horizontal: (i === 0 || i === 1 || i === 3 || i === 4 || i === 5) ? 'center' : 'left',
+          vertical: 'center',
+          wrapText: true
+        };
+        c.border = thinBorder(COLOR.border);
+      });
+      row++;
+    }
+
+    // Auto filter
+    ws.autoFilter = { from: 'A2', to: `G${row - 1}` };
+
+    // === Sheet 2 & 3: Matrix summaries ===
+    buildMatrixSheet(wb, 'สรุปยอดแจก', 'แจก', COLOR, sorted);
+    buildMatrixSheet(wb, 'สรุปยอดขาย', 'ขาย', COLOR, sorted);
+
+    // === Sheet 4: สต็อกล่าสุด ===
+    buildStockSheet(wb, COLOR, sorted);
+
+    // === Save (native download — no library needed) ===
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const dates = [...new Set(CURRENT_RECORDS.map(r => r.date))].sort();
+    const firstDate = dates[0]?.replace(/\//g, '-');
+    const lastDate = dates[dates.length - 1]?.replace(/\//g, '-');
+    const fname = `carnation-${firstDate}-to-${lastDate}.xlsx`;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    showAlert(`✅ ดาวน์โหลดสำเร็จ: ${fname}`, 'success');
+  } catch (e) {
+    console.error(e);
+    showAlert(`❌ Error: ${e.message} — ลอง refresh หน้านี้แล้วกดใหม่`, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+}
+
+function thinBorder(color) {
+  const c = { argb: 'FF' + color };
+  return {
+    top: { style: 'thin', color: c },
+    left: { style: 'thin', color: c },
+    bottom: { style: 'thin', color: c },
+    right: { style: 'thin', color: c }
+  };
+}
+
+function mediumBorder(color) {
+  const c = { argb: 'FF' + color };
+  return {
+    top: { style: 'medium', color: c },
+    left: { style: 'medium', color: c },
+    bottom: { style: 'medium', color: c },
+    right: { style: 'medium', color: c }
+  };
+}
+
+function buildMatrixSheet(wb, name, type, COLOR, allRecords) {
+  const ws = wb.addWorksheet(name, {
+    views: [{ state: 'frozen', xSplit: 2, ySplit: 2 }]
+  });
+
+  const dates = [...new Set(allRecords.map(r => r.date))].sort();
+  const products = [...new Set(
+    allRecords.filter(r => r.type === type).map(r => r.name)
+  )];
+
+  // Aggregate: name -> date -> qty
+  const agg = {};
+  for (const r of allRecords.filter(r => r.type === type)) {
+    if (!agg[r.name]) agg[r.name] = {};
+    agg[r.name][r.date] = (agg[r.name][r.date] || 0) + r.qty;
+  }
+
+  const lastCol = 2 + dates.length + 1; // code + name + dates + total
+  ws.columns = [
+    { width: 38 },
+    ...dates.map(() => ({ width: 12 })),
+    { width: 14 }
+  ];
+
+  // Title
+  ws.mergeCells(1, 1, 1, lastCol);
+  const title = ws.getCell(1, 1);
+  title.value = `${name} — ${dates[0] || ''} ถึง ${dates[dates.length - 1] || ''}`;
+  title.font = { name: 'Tahoma', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.red } };
+  title.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(1).height = 32;
+
+  // Headers
+  ws.getCell(2, 1).value = 'ชื่อสินค้า';
+  dates.forEach((d, i) => {
+    ws.getCell(2, 2 + i).value = d;
+  });
+  ws.getCell(2, 2 + dates.length).value = 'รวม';
+  for (let c = 1; c <= lastCol; c++) {
+    const cell = ws.getCell(2, c);
+    cell.font = { name: 'Tahoma', size: 11, bold: true, color: { argb: COLOR.headerFg } };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.red } };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    cell.border = mediumBorder(COLOR.redDark);
+  }
+  ws.getRow(2).height = 28;
+
+  // Rows
+  const bg = type === 'แจก' ? COLOR.giveawayBg : COLOR.salesBg;
+  let r = 3;
+  for (const p of products) {
+    ws.getCell(r, 1).value = p;
+    ws.getCell(r, 1).font = { name: 'Tahoma', size: 10 };
+    ws.getCell(r, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+    ws.getCell(r, 1).alignment = { vertical: 'center', wrapText: true };
+    ws.getCell(r, 1).border = thinBorder(COLOR.border);
+
+    let rowTotal = 0;
+    dates.forEach((d, i) => {
+      const v = (agg[p] && agg[p][d]) || 0;
+      rowTotal += v;
+      const cell = ws.getCell(r, 2 + i);
+      cell.value = v;
+      cell.font = {
+        name: 'Tahoma', size: 10,
+        color: { argb: v === 0 ? COLOR.zero : 'FF000000' }
+      };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+      cell.alignment = { horizontal: 'center', vertical: 'center' };
+      cell.border = thinBorder(COLOR.border);
+    });
+
+    // Row total
+    const totalCell = ws.getCell(r, 2 + dates.length);
+    totalCell.value = rowTotal;
+    totalCell.font = { name: 'Tahoma', size: 11, bold: true };
+    totalCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.totalBg } };
+    totalCell.alignment = { horizontal: 'center', vertical: 'center' };
+    totalCell.border = mediumBorder(COLOR.border);
+    r++;
+  }
+
+  // Total row
+  ws.getCell(r, 1).value = 'รวมทั้งหมด';
+  ws.getCell(r, 1).font = { name: 'Tahoma', size: 11, bold: true };
+  ws.getCell(r, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.totalBg } };
+  ws.getCell(r, 1).alignment = { horizontal: 'center', vertical: 'center' };
+  ws.getCell(r, 1).border = mediumBorder(COLOR.border);
+
+  let grandTotal = 0;
+  dates.forEach((d, i) => {
+    let colTotal = 0;
+    for (const p of products) {
+      colTotal += (agg[p] && agg[p][d]) || 0;
+    }
+    grandTotal += colTotal;
+    const cell = ws.getCell(r, 2 + i);
+    cell.value = colTotal;
+    cell.font = { name: 'Tahoma', size: 11, bold: true };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.totalBg } };
+    cell.alignment = { horizontal: 'center', vertical: 'center' };
+    cell.border = mediumBorder(COLOR.border);
+  });
+  const grandCell = ws.getCell(r, 2 + dates.length);
+  grandCell.value = grandTotal;
+  grandCell.font = { name: 'Tahoma', size: 12, bold: true, color: { argb: COLOR.red } };
+  grandCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.totalBg } };
+  grandCell.alignment = { horizontal: 'center', vertical: 'center' };
+  grandCell.border = mediumBorder(COLOR.border);
+}
+
+function buildStockSheet(wb, COLOR, allRecords) {
+  const ws = wb.addWorksheet('สต็อกล่าสุด', {
+    views: [{ state: 'frozen', ySplit: 2 }]
+  });
+
+  ws.columns = [{ width: 9 }, { width: 48 }, { width: 15 }, { width: 10 }, { width: 38 }];
+
+  // Last stock per (name, type)
+  const stockMap = {}; // name -> { latest date, stock, unit }
+  const dates = [...new Set(allRecords.map(r => r.date))].sort();
+  const sortedByDate = [...allRecords].sort((a, b) => a.date.localeCompare(b.date));
+  for (const r of sortedByDate) {
+    if (r.stock != null) {
+      if (!stockMap[r.name] || r.date >= stockMap[r.name].date) {
+        stockMap[r.name] = { date: r.date, stock: r.stock, unit: r.unit };
+      }
+    }
+  }
+
+  // Title
+  ws.mergeCells('A1:E1');
+  const title = ws.getCell(1, 1);
+  title.value = 'สต็อกคงเหลือล่าสุด';
+  title.font = { name: 'Tahoma', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+  title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.red } };
+  title.alignment = { horizontal: 'center', vertical: 'middle' };
+  ws.getRow(1).height = 32;
+
+  // Headers
+  const headers = ['รหัส', 'ชื่อสินค้า', 'สต็อก', 'หน่วย', 'อัปเดตล่าสุด'];
+  headers.forEach((h, i) => {
+    const c = ws.getCell(2, i + 1);
+    c.value = h;
+    c.font = { name: 'Tahoma', size: 11, bold: true, color: { argb: COLOR.headerFg } };
+    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.red } };
+    c.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    c.border = mediumBorder(COLOR.redDark);
+  });
+  ws.getRow(2).height = 28;
+
+  // Rows
+  const names = Object.keys(stockMap);
+  let r = 3;
+  names.forEach((name, i) => {
+    const s = stockMap[name];
+    const bg = i % 2 === 0 ? 'FFFFFF' : COLOR.altRow;
+    const values = [i + 1, name, s.stock, s.unit, s.date];
+    values.forEach((v, j) => {
+      const c = ws.getCell(r, j + 1);
+      c.value = v;
+      c.font = {
+        name: 'Tahoma', size: 10,
+        bold: j === 2 && s.stock < 10,
+        color: { argb: j === 2 && s.stock < 10 ? COLOR.red : 'FF000000' }
+      };
+      c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+      c.alignment = {
+        horizontal: (j === 0 || j === 2 || j === 3) ? 'center' : 'left',
+        vertical: 'center',
+        wrapText: true
+      };
+      c.border = thinBorder(COLOR.border);
+    });
+    r++;
+  });
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+
+function clearAll() {
+  document.getElementById('input').value = '';
+  document.getElementById('previewPanel').style.display = 'none';
+  document.getElementById('statsBox').style.display = 'none';
+  document.getElementById('alertBox').innerHTML = '';
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step3').classList.remove('active');
+  CURRENT_RECORDS = [];
+}
+
+function loadSample() {
+  document.getElementById('input').value = SAMPLE_TEXT;
+  showAlert('✏️ โหลดตัวอย่างแล้ว — กด "แปลงเป็น Excel" เพื่อทดลอง', '');
+}
+
+const SAMPLE_TEXT = `รายการของแจก วันที่ 31/07/69
+
+1. นมข้นจืดคาร์เนชัน (กระป๋องใหญ่)
+    จำนวน 50 กระป๋อง
+    แจกได้ :  0 กระป๋อง
+2. นมข้นจืดคาร์เนชัน (กระป๋องเล็ก)
+    จำนวน 50 กระป๋อง
+    แจกได้ : 7 กระป๋อง
+3. คาร์เนชัน เอ็กซ์ตร้า สูตรเข้มข้น
+    จำนวน 50 กระป๋อง
+    แจกได้ : 4 กระป๋อง
+4. ครีมเทียมข้นหวาน คาร์เนชัน ออริจินัล (หลอด)
+    จำนวน 48 หลอด
+    แจกได้ : 4 หลอด
+5. ครีมเทียมข้นหวาน คาร์เนชัน (กระป๋อง)
+    จำนวน 50 กระป๋อง
+    แจกได้ : 2  กระป๋อง
+6. กระเป๋าคาร์เนชัน สีแดง
+    จำนวน 100 ใบ
+    แจกได้ : 4 ใบ
+7. กระเป๋าคาร์เนชัน สีครีม
+    จำนวน 100 ใบ
+    แจกได้ : 2 ใบ
+
+สรุปยอดขาย วันที่ 31/07/69
+
+1. นมข้นจืดคาร์เนชัน (กระป๋องใหญ่)
+    จำนวน 44 กระป๋อง
+    ขายได้ : 0 กระป๋อง
+2. นมข้นจืดคาร์เนชัน (กระป๋องเล็ก)
+    จำนวน 20 กระป๋อง
+    ขายได้ : 0 กระป๋อง
+3. คาร์เนชัน เอ็กซ์ตร้า สูตรเข้มข้น
+    จำนวน 48 กระป๋อง
+    ขายได้ : 0 กระป๋อง
+4. ครีมเทียมข้นหวาน คาร์เนชัน พลัส 0% ไขมัน (27 บาท/หลอด)
+    จำนวน 17 หลอด
+    ขายได้ : 5 หลอด (ส่งให้คุณลีน่าจัง)`;
+</script>
+</body>
+</html>
