@@ -755,6 +755,18 @@ function parseDate(str) {
   return `${d}/${mo}/${y}`;
 }
 
+// Convert "DD/MM/YYYY" → "YYYY-MM-DD" for correct chronological sort
+function dateSortKey(dateStr) {
+  const m = String(dateStr).match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  if (!m) return String(dateStr);
+  const [, d, mo, y] = m;
+  return `${y}-${mo}-${d}`;
+}
+
+function compareDate(a, b) {
+  return dateSortKey(a).localeCompare(dateSortKey(b));
+}
+
 function extractNote(text) {
   // (ส่งให้คุณลีน่าจัง) หรือ (27 บาท/หลอด) ฯลฯ
   const m = text.match(/[（(]\s*([^)）]+?)\s*[)）]/);
@@ -865,7 +877,7 @@ function renderPreview(records) {
 
   // Sort by date then type (แจก before ขาย)
   const sorted = [...records].sort((a, b) => {
-    return a.date.localeCompare(b.date) || (a.type === 'แจก' ? -1 : 1);
+    return compareDate(a.date, b.date) || (a.type === 'แจก' ? -1 : 1);
   });
 
   // Pre-aggregate per day for the divider badges
@@ -1015,7 +1027,7 @@ async function downloadExcel() {
 
     // Sort: by date, then แจก before ขาย
     const sorted = [...CURRENT_RECORDS].sort((a, b) => {
-      return a.date.localeCompare(b.date) || (a.type === 'แจก' ? -1 : 1);
+      return compareDate(a.date, b.date) || (a.type === 'แจก' ? -1 : 1);
     });
 
     let row = 3;
@@ -1063,7 +1075,7 @@ async function downloadExcel() {
     // === Save (native download — no library needed) ===
     const buf = await wb.xlsx.writeBuffer();
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const dates = [...new Set(CURRENT_RECORDS.map(r => r.date))].sort();
+    const dates = [...new Set(CURRENT_RECORDS.map(r => r.date))].sort(compareDate);
     const firstDate = dates[0]?.replace(/\//g, '-');
     const lastDateStr = dates[dates.length - 1]?.replace(/\//g, '-');
     const fname = `carnation-${firstDate}-to-${lastDateStr}.xlsx`;
@@ -1114,7 +1126,7 @@ function buildMatrixSheet(wb, name, type, COLOR, allRecords) {
     views: [{ state: 'frozen', xSplit: 2, ySplit: 2 }]
   });
 
-  const dates = [...new Set(allRecords.map(r => r.date))].sort();
+  const dates = [...new Set(allRecords.map(r => r.date))].sort(compareDate);
   const products = [...new Set(
     allRecords.filter(r => r.type === type).map(r => r.name)
   )];
@@ -1230,8 +1242,8 @@ function buildStockSheet(wb, COLOR, allRecords) {
 
   // Last stock per (name, type)
   const stockMap = {}; // name -> { latest date, stock, unit }
-  const dates = [...new Set(allRecords.map(r => r.date))].sort();
-  const sortedByDate = [...allRecords].sort((a, b) => a.date.localeCompare(b.date));
+  const dates = [...new Set(allRecords.map(r => r.date))].sort(compareDate);
+  const sortedByDate = [...allRecords].sort((a, b) => compareDate(a.date, b.date));
   for (const r of sortedByDate) {
     if (r.stock != null) {
       if (!stockMap[r.name] || r.date >= stockMap[r.name].date) {
@@ -1553,7 +1565,7 @@ function renderToolbar() {
   }
 
   toolbar.style.display = 'flex';
-  const dates = [...new Set(STATE.current.map(r => r.date))].sort();
+  const dates = [...new Set(STATE.current.map(r => r.date))].sort(compareDate);
   const giveaways = STATE.current.filter(r => r.type === 'แจก').length;
   const sales = STATE.current.filter(r => r.type === 'ขาย').length;
   const updated = STATE.lastUpdated ? new Date(STATE.lastUpdated) : null;
