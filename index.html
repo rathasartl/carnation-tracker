@@ -327,6 +327,36 @@
   tr.row-giveaway { background: rgba(255, 244, 220, 0.5); }
   tr.row-sales { background: rgba(227, 242, 253, 0.5); }
 
+  /* Day divider row */
+  tr.day-divider td {
+    background: linear-gradient(135deg, var(--carnation-red) 0%, var(--carnation-red-dark) 100%);
+    color: white;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-bottom: 2px solid var(--carnation-red-dark);
+  }
+  tr.day-divider td strong { font-size: 15px; letter-spacing: 0.02em; }
+  tr.day-divider .day-summary {
+    float: right;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  tr.day-divider .day-summary .badge {
+    background: rgba(255,255,255,0.22);
+    color: white;
+    font-size: 11px;
+    padding: 3px 10px;
+    backdrop-filter: blur(8px);
+  }
+  tr.day-divider .day-summary .badge.total {
+    background: white;
+    color: var(--carnation-red);
+    font-weight: 700;
+  }
+  tr.day-divider .day-icon { margin-right: 6px; }
+
   .badge {
     display: inline-block;
     padding: 3px 10px;
@@ -659,6 +689,19 @@ function renderPreview(records) {
   const panel = document.getElementById('previewPanel');
   panel.style.display = 'block';
 
+  // Sort by date then type (แจก before ขาย)
+  const sorted = [...records].sort((a, b) => {
+    return a.date.localeCompare(b.date) || (a.type === 'แจก' ? -1 : 1);
+  });
+
+  // Pre-aggregate per day for the divider badges
+  const dayCounts = {};
+  for (const r of sorted) {
+    if (!dayCounts[r.date]) dayCounts[r.date] = { giveaway: 0, sales: 0 };
+    if (r.type === 'แจก') dayCounts[r.date].giveaway++;
+    else dayCounts[r.date].sales++;
+  }
+
   let html = `
     <thead>
       <tr>
@@ -674,7 +717,27 @@ function renderPreview(records) {
     <tbody>
   `;
 
-  for (const r of records) {
+  let lastDate = null;
+  for (const r of sorted) {
+    // Day divider row when date changes
+    if (r.date !== lastDate) {
+      const c = dayCounts[r.date];
+      const total = c.giveaway + c.sales;
+      html += `
+        <tr class="day-divider">
+          <td colspan="7">
+            <span class="day-icon">📅</span><strong>${r.date}</strong>
+            <span class="day-summary">
+              <span class="badge">แจก ${c.giveaway}</span>
+              <span class="badge">ขาย ${c.sales}</span>
+              <span class="badge total">รวม ${total}</span>
+            </span>
+          </td>
+        </tr>
+      `;
+      lastDate = r.date;
+    }
+
     const cls = r.type === 'แจก' ? 'row-giveaway' : 'row-sales';
     const badge = r.type === 'แจก'
       ? '<span class="badge badge-giveaway">แจก</span>'
@@ -782,8 +845,10 @@ async function downloadExcel() {
     });
 
     let row = 3;
+    let lastDate = null;
     for (const r of sorted) {
       const bg = r.type === 'แจก' ? COLOR.giveawayBg : COLOR.salesBg;
+      const isNewDay = r.date !== lastDate;
       const values = [r.date, r.type, r.name, r.stock ?? '', r.qty, r.unit, r.note];
       values.forEach((v, i) => {
         const c = ws.getCell(row, i + 1);
@@ -791,6 +856,7 @@ async function downloadExcel() {
         c.font = {
           name: 'Tahoma',
           size: 10,
+          bold: isNewDay && i === 0,
           color: { argb: i === 4 && r.qty === 0 ? COLOR.zero : 'FF000000' }
         };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
@@ -799,8 +865,14 @@ async function downloadExcel() {
           vertical: 'center',
           wrapText: true
         };
-        c.border = thinBorder(COLOR.border);
+        c.border = {
+          top: { style: isNewDay ? 'medium' : 'thin', color: { argb: isNewDay ? 'FF' + COLOR.red : 'FF' + COLOR.border } },
+          left: { style: 'thin', color: { argb: 'FF' + COLOR.border } },
+          bottom: { style: 'thin', color: { argb: 'FF' + COLOR.border } },
+          right: { style: 'thin', color: { argb: 'FF' + COLOR.border } }
+        };
       });
+      lastDate = r.date;
       row++;
     }
 
