@@ -429,6 +429,189 @@
     .stats { grid-template-columns: repeat(2, 1fr); }
     .header h1 { font-size: 22px; }
     .panel { padding: 18px 16px; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .modal { padding: 20px; }
+  }
+
+  /* ===== Toolbar (status + history + backup) ===== */
+  .toolbar {
+    background: white;
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-left: 4px solid var(--carnation-red);
+  }
+
+  .toolbar-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+  }
+
+  .toolbar-status .icon {
+    font-size: 20px;
+  }
+
+  .toolbar-status .meta {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .toolbar-status strong {
+    color: var(--text-dark);
+  }
+
+  .toolbar-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .btn-sm {
+    padding: 7px 14px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  /* ===== Modal ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .modal-overlay.show {
+    display: flex;
+  }
+
+  .modal {
+    background: white;
+    border-radius: 16px;
+    padding: 28px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  }
+
+  .modal h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+  }
+
+  .modal p {
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    font-size: 13px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+
+  /* ===== History list ===== */
+  .history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    transition: all 0.15s;
+  }
+
+  .history-item:hover {
+    border-color: var(--carnation-red);
+    background: var(--carnation-cream);
+  }
+
+  .history-item.current {
+    background: var(--carnation-cream);
+    border-color: var(--carnation-red);
+    border-width: 2px;
+  }
+
+  .history-item .meta {
+    flex: 1;
+  }
+
+  .history-item .ts {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-dark);
+  }
+
+  .history-item .info {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .history-item .actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .empty-history {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ===== Conflict ===== */
+  .conflict-list {
+    background: #FFF8E7;
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+
+  .conflict-list strong {
+    color: var(--carnation-red-dark);
+  }
+
+  /* ===== Banner ===== */
+  .existing-banner {
+    background: linear-gradient(135deg, #D4EDDA 0%, #C3E6CB 100%);
+    border: 1px solid #AEDCB7;
+    color: #155724;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
   }
 </style>
 </head>
@@ -458,13 +641,32 @@
     </div>
   </div>
 
+  <!-- ===== TOOLBAR ===== -->
+  <div class="toolbar" id="toolbar" style="display: none;">
+    <div class="toolbar-status">
+      <span class="icon">💾</span>
+      <div>
+        <strong id="toolbarCount">0 รายการ</strong>
+        <div class="meta" id="toolbarMeta">—</div>
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn btn-secondary btn-sm" onclick="openHistory()">📋 ประวัติ</button>
+      <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇️ สำรอง้อมูล</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">⬆️ นำเข้า</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+      <button class="btn btn-secondary btn-sm" onclick="confirmClearAll()">🗑 ล้างทั้งหมด</button>
+    </div>
+  </div>
+
   <!-- ===== INPUT ===== -->
   <div class="panel">
+    <div id="existingBanner"></div>
     <div class="panel-header">
       <div class="panel-title">ข้อความจาก LINE</div>
       <div class="panel-actions">
         <button class="btn btn-secondary" onclick="loadSample()">ลองตัวอย่าง</button>
-        <button class="btn btn-secondary" onclick="clearAll()">ล้าง</button>
+        <button class="btn btn-secondary" onclick="clearInput()">ล้างช่องวาง</button>
       </div>
     </div>
     <textarea id="input" placeholder="วางข้อความตรงนี้...
@@ -644,34 +846,6 @@ function showAlert(msg, type = '') {
   const box = document.getElementById('alertBox');
   box.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
   if (!msg) box.innerHTML = '';
-}
-
-function convert() {
-  const text = document.getElementById('input').value;
-  if (!text.trim()) {
-    showAlert('⚠️ วางข้อความก่อนกดแปลง', 'error');
-    return;
-  }
-
-  const records = parseInput(text);
-  if (records.length === 0) {
-    showAlert('❌ ไม่พบรายการที่จับคู่ได้ — ลองตรวจสอบฟอร์แมต หรือกดปุ่ม "ลองตัวอย่าง"', 'error');
-    return;
-  }
-
-  CURRENT_RECORDS = records;
-  showAlert(`✅ แปลงสำเร็จ — ${records.length} รายการ`, 'success');
-  renderStats(records);
-  renderPreview(records);
-
-  // Update steps
-  document.getElementById('step2').classList.add('active');
-  document.getElementById('step3').classList.add('active');
-
-  // Scroll to preview
-  setTimeout(() => {
-    document.getElementById('previewPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 200);
 }
 
 function renderStats(records) {
@@ -1118,16 +1292,6 @@ function buildStockSheet(wb, COLOR, allRecords) {
 // UTILS
 // ============================================================
 
-function clearAll() {
-  document.getElementById('input').value = '';
-  document.getElementById('previewPanel').style.display = 'none';
-  document.getElementById('statsBox').style.display = 'none';
-  document.getElementById('alertBox').innerHTML = '';
-  document.getElementById('step2').classList.remove('active');
-  document.getElementById('step3').classList.remove('active');
-  CURRENT_RECORDS = [];
-}
-
 function loadSample() {
   document.getElementById('input').value = SAMPLE_TEXT;
   showAlert('✏️ โหลดตัวอย่างแล้ว — กด "แปลงเป็น Excel" เพื่อทดลอง', '');
@@ -1171,6 +1335,430 @@ const SAMPLE_TEXT = `รายการของแจก วันที่ 31/
 4. ครีมเทียมข้นหวาน คาร์เนชัน พลัส 0% ไขมัน (27 บาท/หลอด)
     จำนวน 17 หลอด
     ขายได้ : 5 หลอด (ส่งให้คุณลีน่าจัง)`;
+</script>
+
+<!-- ===== HISTORY MODAL ===== -->
+<div class="modal-overlay" id="historyModal" onclick="if(event.target===this) closeHistory()">
+  <div class="modal">
+    <h3>📋 ประวัติเวอร์ชั่น</h3>
+    <p>สแน็ปช็อตก่อนการอัปเดตแต่ละครั้ง — คืนค่าได้ถ้าแก้ผิด</p>
+    <ul class="history-list" id="historyList"></ul>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeHistory()">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CONFLICT MODAL ===== -->
+<div class="modal-overlay" id="conflictModal" onclick="if(event.target===this) cancelMerge()">
+  <div class="modal">
+    <h3>⚠️ พบวันที่ซ้ำ</h3>
+    <p>ระบบตรวจพบวันที่มีอยู่แล้วในข้อมูลเดิม ต้องการอัปเดตอย่างไร?</p>
+    <div id="conflictContent"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cancelMerge()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="resolveMerge('skip')">ข้ามวันที่ซ้ำ</button>
+      <button class="btn btn-primary" onclick="resolveMerge('replace')">แทนที่ของเดิม</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CLEAR CONFIRM MODAL ===== -->
+<div class="modal-overlay" id="clearModal" onclick="if(event.target===this) closeClearModal()">
+  <div class="modal">
+    <h3>🗑 ล้างข้อมูลทั้งหมด?</h3>
+    <p>จะลบรายการทั้งหมรวมถึงประวัติเวอร์ชั่น — ไม่สามารถย้อนกลับได้ (แนะนำให้สำรอง้อมูล์ JSON ก่อน)</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeClearModal()">ยกเลิก</button>
+      <button class="btn btn-primary" onclick="doClearAll()" style="background: #DC3545;">ใช่ ล้างทั้งหมด</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STORAGE — localStorage + version history
+// ============================================================
+
+const STORAGE_KEY = 'carnation-tracker-v1';
+const MAX_HISTORY = 20;
+
+// State shape: { current: [records], history: [snapshots], lastUpdated: ISO }
+// Snapshot shape: { ts: ISO, count: int, days: int, records: [...] }
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { current: [], history: [], lastUpdated: null };
+    const parsed = JSON.parse(raw);
+    return {
+      current: parsed.current || [],
+      history: parsed.history || [],
+      lastUpdated: parsed.lastUpdated || null
+    };
+  } catch (e) {
+    console.error('loadState error', e);
+    return { current: [], history: [], lastUpdated: null };
+  }
+}
+
+function saveState(state) {
+  state.lastUpdated = new Date().toISOString();
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return true;
+  } catch (e) {
+    console.error('saveState error', e);
+    showAlert('❌ บันทึกไม่สำเร็จ: ' + e.message, 'error');
+    return false;
+  }
+}
+
+function pushHistory(state) {
+  if (state.current.length === 0) return;
+  const days = [...new Set(state.current.map(r => r.date))].length;
+  const snapshot = {
+    ts: new Date().toISOString(),
+    count: state.current.length,
+    days: days,
+    records: [...state.current]
+  };
+  state.history.unshift(snapshot);
+  if (state.history.length > MAX_HISTORY) {
+    state.history = state.history.slice(0, MAX_HISTORY);
+  }
+}
+
+let STATE = { current: [], history: [], lastUpdated: null };
+let PENDING_NEW_RECORDS = [];  // for conflict resolution
+
+// ============================================================
+// CONVERT FLOW — merge with existing + handle conflicts
+// ============================================================
+
+function convert() {
+  const text = document.getElementById('input').value;
+  if (!text.trim()) {
+    showAlert('⚠️ วางข้อความก่อนกดแปลง', 'error');
+    return;
+  }
+
+  const newRecords = parseInput(text);
+  if (newRecords.length === 0) {
+    showAlert('❌ ไม่พบรายการที่จับคู่ได้ — ลองตรวจสอบฟอร์แมต หรือกดปุ่ม "ลองตัวอย่าง"', 'error');
+    return;
+  }
+
+  // Check for duplicate dates with existing data
+  const existingDates = new Set(STATE.current.map(r => r.date));
+  const newDates = [...new Set(newRecords.map(r => r.date))];
+  const conflicts = newDates.filter(d => existingDates.has(d));
+
+  if (conflicts.length > 0) {
+    PENDING_NEW_RECORDS = newRecords;
+    showConflictModal(conflicts, newRecords, STATE.current);
+    return;
+  }
+
+  // No conflicts — snapshot + merge + save
+  pushHistory(STATE);
+  STATE.current = mergeRecords(STATE.current, newRecords);
+  saveState(STATE);
+
+  finalizeConvert(newRecords);
+}
+
+function showConflictModal(conflicts, newRecords, existing) {
+  const conflictList = document.getElementById('conflictContent');
+  conflictList.innerHTML = `
+    <div class="conflict-list">
+      <strong>วันที่ซ้ำ:</strong> ${conflicts.join(', ')}
+      <br><br>
+      <strong>รายการใหม่:</strong> ${newRecords.length} รายการ (${[...new Set(newRecords.map(r => r.date))].length} วัน)
+      <br>
+      <strong>ข้อมูลเดิม:</strong> ${existing.length} รายการ (${[...new Set(existing.map(r => r.date))].length} วัน)
+    </div>
+    <p style="font-size: 12px;">
+      <strong>ข้ามวันที่ซ้ำ:</strong> เก็บของเดิมไว้ เพิ่มเฉพาะวันใหม่<br>
+      <strong>แทนที่ของเดิม:</strong> ลบของเดิมในวันที่ซ้ำออก ใส่ของใหม่แทน
+    </p>
+  `;
+  document.getElementById('conflictModal').classList.add('show');
+}
+
+function cancelMerge() {
+  PENDING_NEW_RECORDS = [];
+  document.getElementById('conflictModal').classList.remove('show');
+  showAlert('ℹ️ ยกเลิกการเพิ่ม — ข้อมูลเดิมยังอยู่ครบ', '');
+}
+
+function resolveMerge(mode) {
+  document.getElementById('conflictModal').classList.remove('show');
+  if (PENDING_NEW_RECORDS.length === 0) return;
+
+  pushHistory(STATE);
+
+  if (mode === 'replace') {
+    // Remove existing records with same dates as new
+    const newDates = new Set(PENDING_NEW_RECORDS.map(r => r.date));
+    STATE.current = STATE.current.filter(r => !newDates.has(r.date));
+    STATE.current = mergeRecords(STATE.current, PENDING_NEW_RECORDS);
+  } else if (mode === 'skip') {
+    // Skip records whose date is already in existing
+    const existingDates = new Set(STATE.current.map(r => r.date));
+    const toAdd = PENDING_NEW_RECORDS.filter(r => !existingDates.has(r.date));
+    STATE.current = mergeRecords(STATE.current, toAdd);
+  }
+
+  saveState(STATE);
+  const added = PENDING_NEW_RECORDS.length;
+  PENDING_NEW_RECORDS = [];
+  finalizeConvert([]);
+  showAlert(`✅ อัปเดตสำเร็จ — โหมด: ${mode === 'replace' ? 'แทนที่' : 'ข้ามวันซ้ำ'}`, 'success');
+}
+
+function mergeRecords(existing, addition) {
+  // Both arrays — just concat for now, sorting handled at render
+  return [...existing, ...addition];
+}
+
+function finalizeConvert(newRecords) {
+  // Use ALL current state for preview/stats/download
+  CURRENT_RECORDS = STATE.current;
+  showAlert(`✅ แปลงสำเร็จ — เพิ่ม ${newRecords.length} รายการ (รวมเป็น ${STATE.current.length} รายการ)`, 'success');
+  renderStats(STATE.current);
+  renderPreview(STATE.current);
+  renderToolbar();
+  document.getElementById('step2').classList.add('active');
+  document.getElementById('step3').classList.add('active');
+
+  // Clear input after successful convert (so user can paste new day easily)
+  document.getElementById('input').value = '';
+
+  setTimeout(() => {
+    document.getElementById('previewPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 200);
+}
+
+// ============================================================
+// TOOLBAR + STATUS
+// ============================================================
+
+function renderToolbar() {
+  const toolbar = document.getElementById('toolbar');
+  if (STATE.current.length === 0) {
+    toolbar.style.display = 'none';
+    document.getElementById('existingBanner').innerHTML = '';
+    return;
+  }
+
+  toolbar.style.display = 'flex';
+  const dates = [...new Set(STATE.current.map(r => r.date))].sort();
+  const giveaways = STATE.current.filter(r => r.type === 'แจก').length;
+  const sales = STATE.current.filter(r => r.type === 'ขาย').length;
+  const updated = STATE.lastUpdated ? new Date(STATE.lastUpdated) : null;
+  const updatedStr = updated
+    ? `อัปเดต ${updated.toLocaleDateString('th-TH')} ${updated.toLocaleTimeString('th-TH', {hour:'2-digit',minute:'2-digit'})}`
+    : '';
+
+  document.getElementById('toolbarCount').textContent = `${STATE.current.length} รายการ · ${dates.length} วัน`;
+  document.getElementById('toolbarMeta').textContent = `แจก ${giveaways} · ขาย ${sales} · ${updatedStr}`;
+
+  // Existing data banner (inside input panel)
+  document.getElementById('existingBanner').innerHTML = `
+    <div class="existing-banner">
+      <div>
+        💾 <strong>พบข้อมูลเดิม ${STATE.current.length} รายการ (${dates.length} วัน)</strong> — วางวันใหม่แล้วกด "แปลงเป็น Excel" เพื่อเพิ่มต่อ
+      </div>
+      <div style="font-size:11px;opacity:0.8;">${dates[0]} → ${dates[dates.length-1]}</div>
+    </div>
+  `;
+}
+
+// ============================================================
+// HISTORY MODAL
+// ============================================================
+
+function openHistory() {
+  const list = document.getElementById('historyList');
+  if (STATE.history.length === 0 && STATE.current.length === 0) {
+    list.innerHTML = '<div class="empty-history">ยังไม่มีประวัติ — เริ่มแปลงข้อมูลเพื่อสร้าง snapshot แรก</div>';
+  } else {
+    let html = '';
+    // Current state as first entry
+    if (STATE.current.length > 0) {
+      const ts = STATE.lastUpdated ? new Date(STATE.lastUpdated) : new Date();
+      html += `
+        <li class="history-item current">
+          <div class="meta">
+            <div class="ts">🟢 เวอร์ชั่นปัจจุบัน</div>
+            <div class="info">${STATE.current.length} รายการ · ${[...new Set(STATE.current.map(r=>r.date))].length} วัน · ${ts.toLocaleDateString('th-TH')} ${ts.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary btn-sm" onclick="exportJSONFrom(STATE.current)">⬇️ JSON</button>
+          </div>
+        </li>
+      `;
+    }
+    // Past snapshots
+    STATE.history.forEach((snap, i) => {
+      const ts = new Date(snap.ts);
+      html += `
+        <li class="history-item">
+          <div class="meta">
+            <div class="ts">${ts.toLocaleDateString('th-TH')} ${ts.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div>
+            <div class="info">${snap.count} รายการ · ${snap.days} วัน</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-secondary btn-sm" onclick="viewSnapshot(${i})">👁 ดู</button>
+            <button class="btn btn-secondary btn-sm" onclick="restoreSnapshot(${i})" style="border-color:#DC3545;color:#DC3545;">↩ คืนค่า</button>
+          </div>
+        </li>
+      `;
+    });
+    list.innerHTML = html;
+  }
+  document.getElementById('historyModal').classList.add('show');
+}
+
+function closeHistory() {
+  document.getElementById('historyModal').classList.remove('show');
+}
+
+function viewSnapshot(idx) {
+  const snap = STATE.history[idx];
+  if (!snap) return;
+  // Show in preview temporarily without saving
+  CURRENT_RECORDS = snap.records;
+  renderStats(snap.records);
+  renderPreview(snap.records);
+  closeHistory();
+  showAlert(`👁 ดู snapshot ${new Date(snap.ts).toLocaleString('th-TH')} — นี่คือพรีวิวชั่วคราว กด "แปลง/อัปเดต" เพื่อกลับเป็นข้อมูลปัจจุบัน`, '');
+  document.getElementById('previewPanel').scrollIntoView({behavior:'smooth'});
+}
+
+function restoreSnapshot(idx) {
+  const snap = STATE.history[idx];
+  if (!snap) return;
+  if (!confirm(`คืนค่าเป็น snapshot ${new Date(snap.ts).toLocaleString('th-TH')}?\n(${snap.count} รายการ)\nข้อมูลปัจจุบันจะถูกบันทึกเป็น snapshot ใหม่ก่อน`)) return;
+
+  // Save current as new snapshot
+  pushHistory(STATE);
+  // Replace current with snapshot
+  STATE.current = [...snap.records];
+  saveState(STATE);
+
+  CURRENT_RECORDS = STATE.current;
+  renderStats(STATE.current);
+  renderPreview(STATE.current);
+  renderToolbar();
+  closeHistory();
+  showAlert(`✅ คืนค่าสำเร็จ — ข้อมูลย้อนกลับเป็น ${new Date(snap.ts).toLocaleString('th-TH')}`, 'success');
+}
+
+// ============================================================
+// JSON EXPORT/IMPORT
+// ============================================================
+
+function exportJSON() {
+  exportJSONFrom(STATE.current);
+}
+
+function exportJSONFrom(records) {
+  const payload = {
+    version: 1,
+    exported: new Date().toISOString(),
+    count: records.length,
+    records: records
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `carnation-backup-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showAlert(`✅ สำรอง้อมูล์ JSON แล้ว (${records.length} รายการ)`, 'success');
+}
+
+function importJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const records = data.records || data; // support both wrapped and raw
+      if (!Array.isArray(records)) throw new Error('Invalid format');
+      if (!confirm(`นำเข้า ${records.length} รายการ?\n(ข้อมูลเดิมจะถูก snapshot ไว้ก่อน)`)) return;
+      pushHistory(STATE);
+      STATE.current = [...STATE.current, ...records];
+      saveState(STATE);
+      CURRENT_RECORDS = STATE.current;
+      renderStats(STATE.current);
+      renderPreview(STATE.current);
+      renderToolbar();
+      showAlert(`✅ นำเข้าสำเร็จ — เพิ่ม ${records.length} รายการ (รวม ${STATE.current.length})`, 'success');
+    } catch (err) {
+      showAlert(`❌ ไฟล์ไม่ถูกต้อง: ${err.message}`, 'error');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ============================================================
+// CLEAR ALL
+// ============================================================
+
+function confirmClearAll() {
+  document.getElementById('clearModal').classList.add('show');
+}
+
+function closeClearModal() {
+  document.getElementById('clearModal').classList.remove('show');
+}
+
+function doClearAll() {
+  STATE = { current: [], history: [], lastUpdated: null };
+  localStorage.removeItem(STORAGE_KEY);
+  CURRENT_RECORDS = [];
+  document.getElementById('input').value = '';
+  document.getElementById('previewPanel').style.display = 'none';
+  document.getElementById('statsBox').style.display = 'none';
+  document.getElementById('alertBox').innerHTML = '';
+  document.getElementById('existingBanner').innerHTML = '';
+  document.getElementById('step2').classList.remove('active');
+  document.getElementById('step3').classList.remove('active');
+  renderToolbar();
+  closeClearModal();
+}
+
+function clearInput() {
+  document.getElementById('input').value = '';
+}
+
+// ============================================================
+// INIT — load state on page open
+// ============================================================
+
+function init() {
+  STATE = loadState();
+  if (STATE.current.length > 0) {
+    CURRENT_RECORDS = STATE.current;
+    renderStats(STATE.current);
+    renderPreview(STATE.current);
+    renderToolbar();
+    document.getElementById('step2').classList.add('active');
+    document.getElementById('step3').classList.add('active');
+  } else {
+    renderToolbar();
+  }
+}
+
+init();
 </script>
 </body>
 </html>
