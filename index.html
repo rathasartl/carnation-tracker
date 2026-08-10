@@ -891,10 +891,10 @@ function renderPreview(records) {
     <tbody>
   `;
 
-  let lastDate = null;
+  let previewLastDate = null;
   for (const r of sorted) {
     // Day divider row when date changes
-    if (r.date !== lastDate) {
+    if (r.date !== previewLastDate) {
       const c = dayCounts[r.date];
       const total = c.giveaway + c.sales;
       html += `
@@ -909,7 +909,7 @@ function renderPreview(records) {
           </td>
         </tr>
       `;
-      lastDate = r.date;
+      previewLastDate = r.date;
     }
 
     const cls = r.type === 'แจก' ? 'row-giveaway' : 'row-sales';
@@ -1065,8 +1065,8 @@ async function downloadExcel() {
     const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const dates = [...new Set(CURRENT_RECORDS.map(r => r.date))].sort();
     const firstDate = dates[0]?.replace(/\//g, '-');
-    const lastDate = dates[dates.length - 1]?.replace(/\//g, '-');
-    const fname = `carnation-${firstDate}-to-${lastDate}.xlsx`;
+    const lastDateStr = dates[dates.length - 1]?.replace(/\//g, '-');
+    const fname = `carnation-${firstDate}-to-${lastDateStr}.xlsx`;
 
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
