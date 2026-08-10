@@ -357,6 +357,27 @@
   }
   tr.day-divider .day-icon { margin-right: 6px; }
 
+  /* Type sub-divider rows (แจก / ขาย) */
+  tr.type-divider-giveaway td,
+  tr.type-divider-sales td {
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tr.type-divider-giveaway td {
+    background: linear-gradient(135deg, #FFE4B5 0%, #FFD699 100%);
+    color: #8B4513;
+    border-top: 2px solid var(--carnation-red);
+  }
+
+  tr.type-divider-sales td {
+    background: linear-gradient(135deg, #D6EAF8 0%, #AED6F1 100%);
+    color: #1B4F72;
+    border-top: 2px solid #1976D2;
+  }
+
   .badge {
     display: inline-block;
     padding: 3px 10px;
@@ -907,6 +928,7 @@ function renderPreview(records) {
   `;
 
   let previewLastDate = null;
+  let previewLastType = null;
   for (const r of sorted) {
     // Day divider row when date changes
     if (r.date !== previewLastDate) {
@@ -925,6 +947,31 @@ function renderPreview(records) {
         </tr>
       `;
       previewLastDate = r.date;
+      previewLastType = null;  // reset type so we re-emit type header for new day
+    }
+
+    // Type sub-divider when type changes (within same day)
+    if (r.type !== previewLastType) {
+      const isGiveaway = r.type === 'แจก';
+      const typeClass = isGiveaway ? 'type-divider-giveaway' : 'type-divider-sales';
+      const icon = isGiveaway ? '🎁' : '💰';
+      const label = isGiveaway ? 'รายการแจก' : 'รายการขาย';
+      // Count items of this type within this date
+      const typeCount = sorted.filter(x => x.date === r.date && x.type === r.type).length;
+      const qtySum = sorted
+        .filter(x => x.date === r.date && x.type === r.type)
+        .reduce((s, x) => s + x.qty, 0);
+      html += `
+        <tr class="${typeClass}">
+          <td colspan="7">
+            <span style="margin-right:6px;">${icon}</span><strong>${label}</strong>
+            <span style="float:right;font-size:11px;opacity:0.85;">
+              ${typeCount} รายการ · รวม ${qtySum} ${escapeHtml(r.unit || 'ชิ้น')}
+            </span>
+          </td>
+        </tr>
+      `;
+      previewLastType = r.type;
     }
 
     const cls = r.type === 'แจก' ? 'row-giveaway' : 'row-sales';
@@ -1037,9 +1084,56 @@ async function downloadExcel() {
 
     let row = 3;
     let lastDate = null;
+    let lastType = null;
     for (const r of sorted) {
-      const bg = r.type === 'แจก' ? COLOR.giveawayBg : COLOR.salesBg;
       const isNewDay = r.date !== lastDate;
+
+      // Insert day header row when date changes
+      if (isNewDay) {
+        const dayGiveaway = sorted.filter(x => x.date === r.date && x.type === 'แจก').length;
+        const daySales = sorted.filter(x => x.date === r.date && x.type === 'ขาย').length;
+        const dayTotal = dayGiveaway + daySales;
+        ws.mergeCells(row, 1, row, 7);
+        const dayCell = ws.getCell(row, 1);
+        dayCell.value = `📅  ${r.date}    ·    แจก ${dayGiveaway}    ·    ขาย ${daySales}    ·    รวม ${dayTotal} รายการ`;
+        dayCell.font = { name: 'Tahoma', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+        dayCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR.red } };
+        dayCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+        dayCell.border = mediumBorder(COLOR.redDark);
+        ws.getRow(row).height = 26;
+        lastDate = r.date;
+        lastType = null;
+        row++;
+      }
+
+      // Insert type sub-header when type changes within day
+      if (r.type !== lastType) {
+        const isGiveaway = r.type === 'แจก';
+        const typeLabel = isGiveaway ? '🎁  รายการแจก' : '💰  รายการขาย';
+        const typeCount = sorted.filter(x => x.date === r.date && x.type === r.type).length;
+        const qtySum = sorted
+          .filter(x => x.date === r.date && x.type === r.type)
+          .reduce((s, x) => s + x.qty, 0);
+        ws.mergeCells(row, 1, row, 7);
+        const typeCell = ws.getCell(row, 1);
+        typeCell.value = `${typeLabel}    ·    ${typeCount} รายการ    ·    รวม ${qtySum} ${r.unit || 'ชิ้น'}`;
+        typeCell.font = {
+          name: 'Tahoma', size: 11, bold: true,
+          color: { argb: isGiveaway ? 'FF8B4513' : 'FF1B4F72' }
+        };
+        typeCell.fill = {
+          type: 'pattern', pattern: 'solid',
+          fgColor: { argb: isGiveaway ? 'FFFFD699' : 'FFAED6F1' }
+        };
+        typeCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+        typeCell.border = thinBorder(COLOR.border);
+        ws.getRow(row).height = 22;
+        lastType = r.type;
+        row++;
+      }
+
+      // Data row
+      const bg = r.type === 'แจก' ? COLOR.giveawayBg : COLOR.salesBg;
       const values = [r.date, r.type, r.name, r.stock ?? '', r.qty, r.unit, r.note];
       values.forEach((v, i) => {
         const c = ws.getCell(row, i + 1);
@@ -1047,7 +1141,6 @@ async function downloadExcel() {
         c.font = {
           name: 'Tahoma',
           size: 10,
-          bold: isNewDay && i === 0,
           color: { argb: i === 4 && r.qty === 0 ? COLOR.zero : 'FF000000' }
         };
         c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
@@ -1056,19 +1149,13 @@ async function downloadExcel() {
           vertical: 'center',
           wrapText: true
         };
-        c.border = {
-          top: { style: isNewDay ? 'medium' : 'thin', color: { argb: isNewDay ? 'FF' + COLOR.red : 'FF' + COLOR.border } },
-          left: { style: 'thin', color: { argb: 'FF' + COLOR.border } },
-          bottom: { style: 'thin', color: { argb: 'FF' + COLOR.border } },
-          right: { style: 'thin', color: { argb: 'FF' + COLOR.border } }
-        };
+        c.border = thinBorder(COLOR.border);
       });
-      lastDate = r.date;
       row++;
     }
 
-    // Auto filter
-    ws.autoFilter = { from: 'A2', to: `G${row - 1}` };
+    // Note: auto-filter removed because section header rows would break it
+    // Use the matrix sheets (สรุปยอดแจก/ขาย) for filterable data
 
     // === Sheet 2 & 3: Matrix summaries ===
     buildMatrixSheet(wb, 'สรุปยอดแจก', 'แจก', COLOR, sorted);
