@@ -877,7 +877,10 @@ function renderPreview(records) {
 
   // Sort by date then type (แจก before ขาย)
   const sorted = [...records].sort((a, b) => {
-    return compareDate(a.date, b.date) || (a.type === 'แจก' ? -1 : 1);
+    const dc = compareDate(a.date, b.date);
+    if (dc !== 0) return dc;
+    // Same date — preserve original paste order (stable sort)
+    return 0;
   });
 
   // Pre-aggregate per day for the divider badges
@@ -1027,7 +1030,9 @@ async function downloadExcel() {
 
     // Sort: by date, then แจก before ขาย
     const sorted = [...CURRENT_RECORDS].sort((a, b) => {
-      return compareDate(a.date, b.date) || (a.type === 'แจก' ? -1 : 1);
+      const dc = compareDate(a.date, b.date);
+      if (dc !== 0) return dc;
+      return 0;  // preserve paste order
     });
 
     let row = 3;
