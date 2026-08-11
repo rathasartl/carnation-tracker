@@ -674,7 +674,9 @@
     <div class="toolbar-actions">
       <button class="btn btn-secondary btn-sm" onclick="openHistory()">📋 ประวัติ</button>
       <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇️ สำรอง้อมูล</button>
-      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">⬆️ นำเข้า</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('excelFile').click()">📥 อัพ Excel</button>
+      <input type="file" id="excelFile" accept=".xlsx" style="display:none" onchange="importExcel(event)">
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">⬆️ นำเข้า JSON</button>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
       <button class="btn btn-secondary btn-sm" onclick="confirmClearAll()">🗑 ล้างทั้งหมด</button>
     </div>
@@ -1163,6 +1165,14 @@ async function downloadExcel() {
 
     // === Sheet 4: สต็อกล่าสุด ===
     buildStockSheet(wb, COLOR, sorted);
+
+    // === Sheet 5: _source_data (hidden) — ฝัง JSON เพื่อใช้ตอน import กลับ ===
+    const srcSheet = wb.addWorksheet('_source_data', {
+      properties: { hidden: 'veryHidden' },
+      state: 'veryHidden'
+    });
+    srcSheet.getCell('A1').value = JSON.stringify(CURRENT_RECORDS);
+    srcSheet.getCell('A1').alignment = { wrapText: false };
 
     // === Save (native download — no library needed) ===
     const buf = await wb.xlsx.writeBuffer();
@@ -1811,6 +1821,112 @@ function importJSON(event) {
     event.target.value = '';
   };
   reader.readAsText(file);
+}
+
+// ============================================================
+// EXCEL IMPORT — อ่านไฟล์ Excel เก่ากลับเป็น records
+// ============================================================
+
+async function importExcel(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  event.target.value = '';
+
+  if (typeof ExcelJS === 'undefined') {
+    showAlert('❌ โหลด ExcelJS ไม่สำเร็จ — ต้องเชื่อมเน็ตครั้งแรก, ลอง refresh หน้านี้', 'error');
+    return;
+  }
+
+  showAlert('⏳ กำลังอ่านไฟล์ Excel...', '');
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(buf);
+
+    let records = null;
+
+    // Path A: ไฟล์ใหม่ — มี hidden sheet "_source_data" ฝัง JSON มา
+    const sourceSheet = wb.getWorksheet('_source_data');
+    if (sourceSheet) {
+      const jsonCell = sourceSheet.getCell('A1').value;
+      if (jsonCell) {
+        try {
+          const parsed = JSON.parse(jsonCell);
+          if (Array.isArray(parsed)) records = parsed;
+        } catch (e) {
+          console.warn('_source_data parse failed, falling back to parse', e);
+        }
+      }
+    }
+
+    // Path B: ไฟล์เก่า — parse sheet "ข้อมูล" โดย skip section headers
+    if (!records) {
+      const ws = wb.getWorksheet('ข้อมูล') || wb.worksheets[0];
+      if (!ws) throw new Error('ไม่พบ sheet "ข้อมูล" ในไฟล์');
+      records = parseExcelDataSheet(ws);
+    }
+
+    if (!records || records.length === 0) {
+      showAlert('❌ ไม่พบรายการในไฟล์ Excel — ตรวจสอบว่าเป็นไฟล์จากระบบนี้', 'error');
+      return;
+    }
+
+    // ตรวจ conflict วันที่ซ้ำกับข้อมูลเดิม
+    const existingDates = new Set(STATE.current.map(r => r.date));
+    const newDates = [...new Set(records.map(r => r.date))];
+    const conflicts = newDates.filter(d => existingDates.has(d));
+
+    if (conflicts.length > 0) {
+      PENDING_NEW_RECORDS = records;
+      showConflictModal(conflicts, records, STATE.current);
+      return;
+    }
+
+    // ไม่ conflict — snapshot + merge + save
+    pushHistory(STATE);
+    STATE.current = mergeRecords(STATE.current, records);
+    saveState(STATE);
+    finalizeConvert(records);
+    showAlert(`✅ นำเข้า Excel สำเร็จ — เพิ่ม ${records.length} รายการ (รวม ${STATE.current.length})`, 'success');
+  } catch (err) {
+    console.error(err);
+    showAlert(`❌ อ่านไฟล์ไม่สำเร็จ: ${err.message}`, 'error');
+  }
+}
+
+function parseExcelDataSheet(ws) {
+  const records = [];
+  const dateRe = /^\d{2}\/\d{2}\/\d{4}$/;
+  let rowCount = ws.rowCount;
+  if (!rowCount || rowCount < 3) rowCount = ws.actualRowCount || 0;
+
+  for (let r = 3; r <= rowCount + 5; r++) {
+    const row = ws.getRow(r);
+    if (!row || !row.cellCount) continue;
+    const dateCell = row.getCell(1).value;
+    if (dateCell == null) continue;
+    const dateStr = String(dateCell).trim();
+    if (!dateRe.test(dateStr)) continue;  // skip section headers (📅, 🎁, 💰)
+
+    const typeStr = String(row.getCell(2).value || '').trim();
+    const name = String(row.getCell(3).value || '').trim();
+    const stockRaw = row.getCell(4).value;
+    const qtyRaw = row.getCell(5).value;
+    const unit = String(row.getCell(6).value || '').trim();
+    const note = String(row.getCell(7).value || '').trim();
+
+    records.push({
+      date: dateStr,
+      type: typeStr,
+      name: name,
+      stock: Number.isFinite(Number(stockRaw)) ? Number(stockRaw) : null,
+      qty: Number.isFinite(Number(qtyRaw)) ? Number(qtyRaw) : 0,
+      unit: unit,
+      note: note
+    });
+  }
+  return records;
 }
 
 // ============================================================
