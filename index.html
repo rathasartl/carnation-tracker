@@ -634,6 +634,35 @@
     gap: 12px;
     flex-wrap: wrap;
   }
+
+  /* ===== First-open upload card (empty state) ===== */
+  .welcome-card {
+    background: linear-gradient(135deg, var(--carnation-cream) 0%, #FFF4DC 100%);
+    border: 2px dashed var(--carnation-red);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  .welcome-card .welcome-text {
+    flex: 1;
+    min-width: 220px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .welcome-card .welcome-text strong {
+    display: block;
+    color: var(--text-dark);
+    font-size: 15px;
+    margin-bottom: 2px;
+  }
 </style>
 </head>
 <body>
@@ -684,6 +713,7 @@
 
   <!-- ===== INPUT ===== -->
   <div class="panel">
+    <div id="welcomeBox"></div>
     <div id="existingBanner"></div>
     <div class="panel-header">
       <div class="panel-title">ข้อความจาก LINE</div>
@@ -1663,8 +1693,19 @@ function renderToolbar() {
   if (STATE.current.length === 0) {
     toolbar.style.display = 'none';
     document.getElementById('existingBanner').innerHTML = '';
+    document.getElementById('welcomeBox').innerHTML = `
+      <div class="welcome-card">
+        <div class="welcome-text">
+          <strong>📥 เริ่มจากไฟล์ Excel เดิม (ถ้ามี)</strong>
+          อัพไฟล์เก่าก่อน แล้ววางข้อความวันใหม่ด้านล่าง — กดดาวน์โหลดครั้งเดียว ได้ไฟล์เวอร์ชั่นอัพเดทรวมของเก่า + ใหม่ทันที
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('excelFile').click()">📥 อัพโหลด Excel เดิม</button>
+      </div>
+    `;
     return;
   }
+
+  document.getElementById('welcomeBox').innerHTML = '';
 
   toolbar.style.display = 'flex';
   const dates = [...new Set(STATE.current.map(r => r.date))].sort(compareDate);
